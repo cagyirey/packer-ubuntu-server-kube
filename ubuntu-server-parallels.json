@@ -1,0 +1,67 @@
+{
+  "_comment": "Build with `packer build ubuntu.json`",
+  "builders": [
+    {
+      "vm_name": "{{ user `vm_name` }}",
+      "type": "parallels-iso",
+      "guest_os_type": "{{ user `parallels_guest_os_type` }}",
+
+      "iso_checksum": "{{ user `iso_checksum` }}",
+      "iso_url": "{{ user `iso_url` }}",
+
+      "disk_size": "{{ user `disk_size` }}",
+
+      "boot_wait": "15s",
+      "boot_command": [
+        "{{ user `boot_command_prefix` }}",
+        "autoinstall ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/",
+        "<enter>"
+      ],
+      "shutdown_command": "echo ''|sudo -S shutdown -P now",
+
+      "http_directory": "http",
+      "floppy_files": ["http/{{ user `preseed` }}"],
+
+      "parallels_tools_flavor": "lin",
+      "prlctl": [
+        ["set", "{{.Name}}", "--memsize", "{{ user `memory` }}"],
+        ["set", "{{.Name}}", "--cpus", "{{ user `cpus` }}"],
+        ["set", "{{.Name}}", "--efi-boot", "off"],
+        ["set", "{{.Name}}", "--hypervisor-type", "parallels"],
+        ["set", "{{.Name}}", "--adaptive-hypervisor", "off"]
+      ],
+      "prlctl_version_file": ".prlctl_version",
+
+      "ssh_password": "{{ user `ssh_password` }}",
+      "ssh_username": "{{ user `ssh_username` }}",
+      "ssh_private_key_file": "{{ user `ssh_private_key_file` }}",
+      "ssh_wait_timeout": "10000s",
+      "ssh_handshake_attempts": "20"
+    }
+  ],
+  "provisioners": [{ "type": "breakpoint", "disable": "false" }],
+  "post-processors": [
+    {
+      "keep_input_artifact": false,
+      "output": "box/{{.Provider}}/{{user `vm_name`}}-{{user `version`}}.box",
+      "type": "vagrant",
+      "vagrantfile_template": "{{ user `vagrantfile_template` }}"
+    }
+  ],
+  "variables": {
+    "vm_name": "ubuntu2004",
+    "iso_url": "https://releases.ubuntu.com/20.04/ubuntu-20.04.2-live-server-amd64.iso",
+    "iso_checksum": "sha256:d1f2bf834bbe9bb43faf16f9be992a6f3935e65be0edece1dee2aa6eb1767423",
+    "cpus": "4",
+    "disk_size": "65536",
+    "memory": "4096",
+    "boot_command_prefix": "<enter><f6><esc><wait>",
+    "hyperv_generation": "2",
+    "hyperv_switch": "vagrant",
+    "ssh_username": "vagrant",
+    "ssh_password": "ubuntu",
+    "ssh_private_key_file": "./id_ubuntu",
+    "vagrantfile_template": "Vagrantfile.HyperV.template",
+    "version": "0.1.0"
+  }
+}

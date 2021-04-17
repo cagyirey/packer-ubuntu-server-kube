@@ -1,0 +1,78 @@
+BOX_IMAGE = "ubuntu-kube"
+
+POD_CIDR = "172.18.0.0/16"
+API_ADV_ADDRESS = "10.8.8.10"
+
+BASE_MEM = 2048
+
+WORKER_MEM = 4096
+WORKER_CPUS = 2
+WORKER_COUNT = 2
+
+CONTROLLER_MEM = 4096
+CONTROLLER_CPUS = 2
+
+SSH_PRIVATE_KEY_PATH = "./id_ubuntu"
+
+Vagrant.configure("2") do |config|
+    config.vm.box = BOX_IMAGE
+    config.vm.guest = :debian
+    config.vm.hostname = "kube-controller"
+    config.vm.network :private_network, ip: "10.8.8.10"
+
+    config.vm.synced_folder ".", "/vagrant", disabled: true
+    config.vm.synced_folder ".kube", "/home/vagrant/.kube"
+
+    config.ssh.private_key_path = SSH_PRIVATE_KEY_PATH
+    
+
+    config.vm.provider :hyperv do |hv|
+        hv.vmname = "kube-controller"
+        hv.cpus = CONTROLLER_CPUS
+        hv.memory = BASE_MEM
+        hv.maxmemory = CONTROLLER_MEM
+        hv.linked_clone = true
+        hv.auto_start_action = "StartIfRunning"
+    end
+
+    config.vm.provision "shell" do |s|
+        s.inline = <<-SCRIPT
+            sudo mkdir -p /etc/containerd
+            containerd config default | sudo tee /target/etc/containerd/config.toml
+
+            sudo kubeadm init --pod-network-cidr #{POD_CIDR} --apiserver-advertise-address 10.8.8.10
+            
+            sudo cp -i /etc/kubernetes/admin.conf ${HOME}/.kube/config
+            chown vagrant:vagrant ${HOME}/.kube/config
+
+            sudo mkdir -p /root/.kube
+            sudo cp -i /etc/kubernetes/admin.conf /root/.kube/config
+        SCRIPT
+    end
+
+    (0..WORKER_COUNT-1).each do |i|
+        config.vm.define "kube-worker-#{i}" do |subconfig|
+            subconfig.vm.box = BOX_IMAGE
+            subconfig.vm.guest = :debian
+            subconfig.vm.hostname = "kube-worker-#{i}"
+            subconfig.vm.network :private_network, ip: "10.8.8.#{i + 20}"
+        
+            subconfig.ssh.private_key_path = SSH_PRIVATE_KEY_PATH
+
+            subconfig.vm.provider :hyperv do |hv|
+                hv.vmname = "kube-worker-#{i}"
+                hv.cpus = WORKER_CPUS
+                hv.memory = BASE_MEM
+                hv.maxmemory = WORKER_MEM
+                hv.linked_clone = true
+                hv.auto_start_action = "StartIfRunning"
+            end
+        
+            subconfig.vm.provision "shell" do |s|
+                s.inline = <<-SCRIPT
+                    echo KUBELET_EXTRA_ARGS=--node-ip=10.8.8.#{i + 20} > /etc/default/kubelet
+                SCRIPT
+            end
+        end
+    end
+end

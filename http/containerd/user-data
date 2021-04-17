@@ -1,0 +1,65 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  refresh-installer:
+    update: yes
+
+  packages:
+    - linux-tools-virtual
+    - linux-cloud-tools-virtual
+    - containerd
+    
+  snaps:
+    - name: kubelet
+      channel: "latest/stable"
+      classic: true
+    - name: kubectl
+      channel: "latest/stable"
+      classic: true
+    - name: kubeadm
+      channel: "latest/stable"
+      classic: true
+
+  storage:
+    layout:
+      name: lvm
+
+  early-commands:
+    - systemctl stop ssh # otherwise packer tries to connect and exceed max attempts
+
+  keyboard:
+    layout: en
+
+  ssh:
+    install-server: yes
+    allow-pw: no
+
+  late-commands:
+    - lvextend -r -l +100%FREE $(lvs --no-heading -o vg_name,lv_name --separator /)
+    - swapoff -a
+    - rm /target/swap.img
+
+user-data: 
+
+  users:
+    - name: vagrant
+      groups: users
+      sudo: ALL=(ALL) NOPASSWD:ALL
+      lock_passwd: true
+      ssh_authorized_keys:
+        -  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICuj30xqI85pnAEsZaq6nHHTnFGFHwnWVSIYT6NdE75S"
+
+  write_files:
+    - content: |
+        # added for kubernetes bridge
+        net.bridge.bridge-nf-call-ip6tables = 1
+        net.ipv4.ip_forward                 = 1
+        net.bridge.bridge-nf-call-iptables  = 1
+      path: /etc/sysctl.d/99-kubernetes-cri.conf
+
+    - content: |
+        overlay
+        br_netfilter
+      path: /etc/modules-load.d/containerd.conf
+
