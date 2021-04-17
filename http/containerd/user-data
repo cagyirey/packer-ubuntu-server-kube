@@ -40,26 +40,26 @@ autoinstall:
     - swapoff -a
     - rm /target/swap.img
 
-user-data: 
+  user-data: 
 
-  users:
-    - name: vagrant
-      groups: users
-      sudo: ALL=(ALL) NOPASSWD:ALL
-      lock_passwd: true
-      ssh_authorized_keys:
-        -  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICuj30xqI85pnAEsZaq6nHHTnFGFHwnWVSIYT6NdE75S"
+    users:
+      - name: vagrant
+        groups: users
+        sudo: ALL=(ALL) NOPASSWD:ALL
+        lock_passwd: true
+        ssh_authorized_keys:
+          -  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICuj30xqI85pnAEsZaq6nHHTnFGFHwnWVSIYT6NdE75S"
 
-  write_files:
-    - content: |
-        # added for kubernetes bridge
-        net.bridge.bridge-nf-call-ip6tables = 1
-        net.ipv4.ip_forward                 = 1
-        net.bridge.bridge-nf-call-iptables  = 1
-      path: /etc/sysctl.d/99-kubernetes-cri.conf
+    write_files:
+      - content: |
+          # added for kubernetes bridge
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.ipv4.ip_forward                 = 1
+          net.bridge.bridge-nf-call-iptables  = 1
+        path: /etc/sysctl.d/99-kubernetes-cri.conf
 
-    - content: |
-        overlay
-        br_netfilter
-      path: /etc/modules-load.d/containerd.conf
+      - content: |
+          overlay
+          br_netfilter
+        path: /etc/modules-load.d/containerd.conf
 
