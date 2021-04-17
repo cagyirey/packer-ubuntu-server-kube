@@ -3,11 +3,15 @@ autoinstall:
   version: 1
 
   refresh-installer:
-    update: yes
+    update: no
 
   packages:
+    # required by hyper-v
     - linux-tools-virtual
     - linux-cloud-tools-virtual
+    # required by kubeadm
+    - conntrack
+    - socat
     - containerd
     
   snaps:
@@ -40,13 +44,20 @@ autoinstall:
     - swapoff -a
     - rm /target/swap.img
 
+    # Install crictl
+    - wget -O /tmp/crictl.tgz https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.21.0/crictl-v1.21.0-linux-amd64.tar.gz
+    - tar zxvf /tmp/crictl.tgz -C /usr/local/bin
+    - rm -f /tmp/crictl.tgz
+
   user-data: 
 
     users:
       - name: vagrant
         groups: users
+        passwd: "$6$bhZARn1NjBXaQ.M.$JqHfRKB96fwRQQWNGH.tBxyECYY9rrbBeS8br84ccn4OSnC.7pyhvHunpobZ8fV8NCOIXasRGyZT4MCJWQYtM1"
         sudo: ALL=(ALL) NOPASSWD:ALL
         lock_passwd: true
+        shell: /bin/bash
         ssh_authorized_keys:
           -  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICuj30xqI85pnAEsZaq6nHHTnFGFHwnWVSIYT6NdE75S"
 

@@ -19,7 +19,7 @@
         "<enter>initrd /casper/initrd",
         "<enter>boot<enter>"
       ],
-      "shutdown_command": "echo 'vagrant' | sudo -S shutdown -P now",
+      "shutdown_command": "sudo -S shutdown -P now",
 
       "generation": "{{user `hyperv_generation`}}",
       "switch_name": "{{user `hyperv_switch`}}",
