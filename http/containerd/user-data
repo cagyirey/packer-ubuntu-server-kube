@@ -7,8 +7,12 @@ autoinstall:
 
   apt:
     sources:
+      # required for kubernetes-cni
       kubernetes-ppa:
         source: ppa:k8s-maintainers/1.21
+      # required for calico
+      calico-ppa:
+        source: ppa:project-calico/master
 
   packages:
     # hyper-v dependencies
@@ -20,6 +24,8 @@ autoinstall:
     # kubeadm dependencies
     - conntrack
     - socat
+    # container network interface
+    - networking-calico
     
   snaps:
     - name: kubelet
@@ -54,10 +60,6 @@ autoinstall:
     # Install crictl
     - wget -qO - https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.21.0/crictl-v1.21.0-linux-amd64.tar.gz | tar zxvf - -C /target/usr/local/bin
 
-    # Configure kubelet to use containerd
-    - snap set kubelet container-runtime="remote" container-runtime-endpoint="unix:///run/containerd/containerd.run"
-
-
   user-data: 
 
     users:
@@ -65,7 +67,7 @@ autoinstall:
         groups: users
         passwd: "$6$bhZARn1NjBXaQ.M.$JqHfRKB96fwRQQWNGH.tBxyECYY9rrbBeS8br84ccn4OSnC.7pyhvHunpobZ8fV8NCOIXasRGyZT4MCJWQYtM1"
         sudo: ALL=(ALL) NOPASSWD:ALL
-        lock_passwd: true
+        lock_passwd: false
         shell: /bin/bash
         ssh_authorized_keys:
           -  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICuj30xqI85pnAEsZaq6nHHTnFGFHwnWVSIYT6NdE75S"
