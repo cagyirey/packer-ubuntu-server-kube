@@ -10,9 +10,6 @@ autoinstall:
       # required for kubernetes-cni
       kubernetes-ppa:
         source: ppa:k8s-maintainers/1.21
-      # required for calico
-      calico-ppa:
-        source: ppa:project-calico/master
 
   packages:
     # hyper-v dependencies
@@ -24,8 +21,6 @@ autoinstall:
     # kubeadm dependencies
     - conntrack
     - socat
-    # container network interface
-    - networking-calico
     
   snaps:
     - name: kubelet
@@ -84,32 +79,3 @@ autoinstall:
           overlay
           br_netfilter
         path: /etc/modules-load.d/containerd.conf
-
-      - content: |
-          {
-            "name": "calico-cni",
-            "cniVersion": "0.3.1",
-            "plugins": [
-              {
-                "type": "calico",
-                "log_level": "info",
-                "datastore_type": "kubernetes",
-                "mtu": 1500,
-                "ipam": {
-                    "type": "calico-ipam"
-                },
-                "policy": {
-                    "type": "k8s"
-                },
-                "kubernetes": {
-                    "kubeconfig": "/etc/cni/net.d/calico-kubeconfig"
-                }
-              },
-              {
-                "type": "portmap",
-                "snat": true,
-                "capabilities": {"portMappings": true}
-              }
-            ]
-          }
-        path: /etc/cni/net.d/10-calico.conflist
