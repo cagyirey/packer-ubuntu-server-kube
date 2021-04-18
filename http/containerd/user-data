@@ -3,16 +3,23 @@ autoinstall:
   version: 1
 
   refresh-installer:
-    update: no
+    update: yes
+
+  apt:
+    sources:
+      kubernetes-ppa:
+        source: ppa:k8s-maintainers/1.21
 
   packages:
-    # required by hyper-v
+    # hyper-v dependencies
     - linux-tools-virtual
     - linux-cloud-tools-virtual
-    # required by kubeadm
+    # containerd dependencies
+    - containerd
+    - kubernetes-cni
+    # kubeadm dependencies
     - conntrack
     - socat
-    - containerd
     
   snaps:
     - name: kubelet
@@ -45,9 +52,11 @@ autoinstall:
     - rm /target/swap.img
 
     # Install crictl
-    - wget -O /tmp/crictl.tgz https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.21.0/crictl-v1.21.0-linux-amd64.tar.gz
-    - tar zxvf /tmp/crictl.tgz -C /usr/local/bin
-    - rm -f /tmp/crictl.tgz
+    - wget -qO - https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.21.0/crictl-v1.21.0-linux-amd64.tar.gz | tar zxvf - -C /target/usr/local/bin
+
+    # Configure kubelet to use containerd
+    - snap set kubelet container-runtime="remote" container-runtime-endpoint="unix:///run/containerd/containerd.run"
+
 
   user-data: 
 

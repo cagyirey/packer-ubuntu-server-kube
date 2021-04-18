@@ -35,7 +35,7 @@
   "post-processors": [
     {
       "type": "vagrant",
-      "vagrantfile_template": "templates/hyperv/Vagrantfile.template",
+      "vagrantfile_template": "templates/hyperv/Vagrantfile",
       "output": "{{ user `build_directory` }}/{{user `template`}}.{{.Provider}}.box"
     }
   ],
