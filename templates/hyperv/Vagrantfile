@@ -41,6 +41,42 @@ Vagrant.configure("2") do |config|
 
     config.vm.provision "shell" do |s|
         s.inline = <<-SCRIPT
+
+            openssl req -newkey rsa:4096 \
+                -keyout "#{VAGRANT_KUBEDIR}/cni.key" \
+                -nodes \
+                -out "#{VAGRANT_KUBEDIR}/cni.csr" \
+                -subj "/CN=calico-cni"
+
+            openssl x509 -req -in "#{VAGRANT_KUBEDIR}/cni.csr" \
+                -CA /etc/kubernetes/pki/ca.crt \
+                -CAkey /etc/kubernetes/pki/ca.key \
+                -CAcreateserial \
+                -out "#{VAGRANT_KUBEDIR}/cni.crt" \
+                -days 365
+
+            kubectl config set-cluster kubernetes \
+                --certificate-authority=/etc/kubernetes/pki/ca.crt \
+                --embed-certs=true \
+                --server="#{API_ADV_ADDRESS}" \
+                --kubeconfig="#{VAGRANT_KUBEDIR}/cni.kubeconfig"
+            
+            kubectl config set-credentials calico-cni \
+                --client-certificate="#{VAGRANT_KUBEDIR}/cni.crt" \
+                --client-key="#{VAGRANT_KUBEDIR}/cni.key" \
+                --embed-certs=true \
+                --kubeconfig="#{VAGRANT_KUBEDIR}/cni.kubeconfig"
+            
+            kubectl config set-context default \
+                --cluster=kubernetes \
+                --user=calico-cni \
+                --kubeconfig="#{VAGRANT_KUBEDIR}/cni.kubeconfig"
+            
+            kubectl config use-context default --kubeconfig="#{VAGRANT_KUBEDIR}/cni.kubeconfig"
+
+            cp "#{VAGRANT_KUBEDIR}/cni.kubeconfig" /etc/cni/net.d/calico-kubeconfig
+            chmod 600 /etc/cni/net.d/calico-kubeconfig
+            
             mkdir -p /etc/containerd
             containerd config default | tee /etc/containerd/config.toml
 
