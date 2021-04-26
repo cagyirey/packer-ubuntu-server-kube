@@ -1,10 +1,5 @@
 BOX_IMAGE = "ubuntu-kube"
 
-CRI_SOCKET = "/run/containerd/containerd.sock"
-
-POD_CIDR = "172.18.0.0/16"
-API_ADV_ADDRESS = "10.8.8.10"
-
 BASE_MEM = 2048
 
 WORKER_MEM = 4096
@@ -14,57 +9,76 @@ WORKER_COUNT = 2
 CONTROLLER_MEM = 4096
 CONTROLLER_CPUS = 2
 
+CRI_RUNTIME = "remote"
+CRI_SOCKET = "unix:///run/containerd/containerd.sock"
+
+POD_CIDR = "10.96.0.0/12"
+
+VAGRANT_KUBEDIR = "/home/vagrant/.kube"
 SSH_PRIVATE_KEY_PATH = "./id_ubuntu"
 
 Vagrant.configure("2") do |config|
 
-    config.vm.box = BOX_IMAGE
-    config.vm.guest = :debian
-    config.vm.hostname = "kube-controller"
-    config.vm.network :private_network, ip: "10.8.8.10"
-
-    config.vm.synced_folder ".", "/vagrant", disabled: true
-    config.vm.synced_folder ".kube", "/home/vagrant/.kube", type: "smb" 
-
-    config.ssh.private_key_path = SSH_PRIVATE_KEY_PATH
+    config.vm.define "kube-controller" do |controller|
+        controller.vm.hostname = "kube-controller"
+        controller.vm.box = BOX_IMAGE
+        controller.vm.guest = :debian
+        controller.vm.network :private_network 
     
+        controller.vm.synced_folder ".", "/vagrant", disabled: true
+        controller.vm.synced_folder ".kube", VAGRANT_KUBEDIR, type: "smb" 
+    
+        controller.ssh.private_key_path = SSH_PRIVATE_KEY_PATH
+        
+        controller.vm.provider :hyperv do |hv|
+            hv.vmname = "kube-controller"
+            hv.cpus = CONTROLLER_CPUS
+            hv.memory = BASE_MEM
+            hv.maxmemory = CONTROLLER_MEM
+            hv.linked_clone = true
+            hv.auto_start_action = "StartIfRunning"
+        end
 
-    config.vm.provider :hyperv do |hv|
-        hv.vmname = "kube-controller"
-        hv.cpus = CONTROLLER_CPUS
-        hv.memory = BASE_MEM
-        hv.maxmemory = CONTROLLER_MEM
-        hv.linked_clone = true
-        hv.auto_start_action = "StartIfRunning"
+        controller.vm.provision "shell" do |s|
+            s.inline = <<-SCRIPT
+                snap stop kubelet.daemon
+                echo 'Alias=kubelet.service' >> /etc/systemd/system/snap.kubelet.daemon.service
+                systemctl reenable snap.kubelet.daemon.service
+
+                snap set kubelet \
+                    container-runtime="#{CRI_RUNTIME}" \
+                    container-runtime-endpoint="#{CRI_SOCKET}" \
+                    config="/var/lib/kubelet/config.yaml" \
+                    kubeconfig="/etc/kubernetes/kubelet.conf"
+        
+                kubeadm init --pod-network-cidr=#{POD_CIDR}
+
+                cp -i /etc/kubernetes/admin.conf #{VAGRANT_KUBEDIR}/config
+                chown vagrant:vagrant #{VAGRANT_KUBEDIR}/config
+
+                mkdir -p /root/.kube
+                cp -i /etc/kubernetes/admin.conf /root/.kube/config
+
+                wget -qO - https://docs.projectcalico.org/manifests/calico-etcd.yaml | kubectl apply -f -
+                kubeadm token create --print-join-command > "#{VAGRANT_KUBEDIR}/join.sh"
+            SCRIPT
+        end
     end
 
-    config.vm.provision "shell" do |s|
-        s.inline = <<-SCRIPT
-            sudo mkdir -p /etc/containerd
-            containerd config default | sudo tee /etc/containerd/config.toml
-
-            sudo kubeadm init \
-                --pod-network-cidr #{POD_CIDR} \
-                --apiserver-advertise-address #{API_ADV_ADDRESS}
-            
-            sudo cp -i /etc/kubernetes/admin.conf ${HOME}/.kube/config
-            chown vagrant:vagrant ${HOME}/.kube/config
-
-            sudo mkdir -p /root/.kube
-            sudo cp -i /etc/kubernetes/admin.conf /root/.kube/config
-        SCRIPT
-    end
 
     (0..WORKER_COUNT-1).each do |i|
-        config.vm.define "kube-worker-#{i}" do |subconfig|
-            subconfig.vm.box = BOX_IMAGE
-            subconfig.vm.guest = :debian
-            subconfig.vm.hostname = "kube-worker-#{i}"
-            subconfig.vm.network :private_network, ip: "10.8.8.#{i + 20}"
+        config.vm.define "kube-worker-#{i}" do |worker|
+            worker.vm.box = BOX_IMAGE
+            worker.vm.guest = :debian
+            worker.vm.hostname = "kube-worker-#{i}"
+            worker.vm.network :private_network
         
-            subconfig.ssh.private_key_path = SSH_PRIVATE_KEY_PATH
+            worker.vm.synced_folder ".", "/vagrant", disabled: true
+            worker.vm.synced_folder ".kube", VAGRANT_KUBEDIR, type: "smb" 
 
-            subconfig.vm.provider :hyperv do |hv|
+            worker.ssh.private_key_path = SSH_PRIVATE_KEY_PATH
+
+            worker.vm.provider :hyperv do |hv|
                 hv.vmname = "kube-worker-#{i}"
                 hv.cpus = WORKER_CPUS
                 hv.memory = BASE_MEM
@@ -72,10 +86,22 @@ Vagrant.configure("2") do |config|
                 hv.linked_clone = true
                 hv.auto_start_action = "StartIfRunning"
             end
-        
-            subconfig.vm.provision "shell" do |s|
+
+            worker.vm.provision "shell" do |s|
                 s.inline = <<-SCRIPT
-                    echo KUBELET_EXTRA_ARGS=--node-ip=10.8.8.#{i + 20} > /etc/default/kubelet
+                    snap stop kubelet.daemon
+                    echo 'Alias=kubelet.service' >> /etc/systemd/system/snap.kubelet.daemon.service
+                    systemctl reenable snap.kubelet.daemon.service
+        
+                    snap set kubelet \
+                        container-runtime="#{CRI_RUNTIME}" \
+                        container-runtime-endpoint="#{CRI_SOCKET}" \
+                        config="/var/lib/kubelet/config.yaml" \
+                        bootstrap-kubeconfig="/etc/kubernetes/bootstrap-kubelet.conf" \
+                        kubeconfig="/etc/kubernetes/kubelet.conf"
+
+                    chmod +x /home/vagrant/.kube/join.sh
+                    /home/vagrant/.kube/join.sh
                 SCRIPT
             end
         end
