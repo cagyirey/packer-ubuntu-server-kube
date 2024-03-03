@@ -65,7 +65,7 @@ autoinstall:
     users:
       - name: vagrant
         groups: users
-        passwd: "$6$bhZARn1NjBXaQ.M.$JqHfRKB96fwRQQWNGH.tBxyECYY9rrbBeS8br84ccn4OSnC.7pyhvHunpobZ8fV8NCOIXasRGyZT4MCJWQYtM1"
+        passwd: "$6$bhZARn1NjBXaQ.M.$JqHfRKB96fwRQQWNGH.tBxyECYY9rrbBeS8br84ccn4OSnC.7pyhvHunpobZ8fV8NCOIXasRGyZT4MCJWQYtM1" # ubuntu
         sudo: ALL=(ALL) NOPASSWD:ALL
         lock_passwd: false
         shell: /bin/bash

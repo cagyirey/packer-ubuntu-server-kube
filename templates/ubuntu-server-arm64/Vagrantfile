@@ -1,0 +1,22 @@
+Vagrant.require_version ">= 1.8"
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu-server-arm64"
+  config.vm.hostname = "ubuntu-server-arm64"
+  config.vm.guest = :debian
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.communicator = :ssh
+  config.ssh.username = "ubuntu"
+  config.ssh.private_key_path = "~/.ssh/gh_personal_ed25519"
+
+  # TODO: review the configuration for non-parallels providers
+  config.vm.provider :parallels do |v, override|
+      v.name = "ubuntu-server-arm64" # parallels will override `config.vm.hostname` with this setting
+      v.update_guest_tools = true
+      v.memory = "8192"
+      v.cpus = "8"
+      v.customize ["set", :id, "--adaptive-hypervisor", "on"]
+      # v.customize ["set", :id, "--adaptive-hypervisor", "on"]
+  end
+end

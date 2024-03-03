@@ -1,0 +1,37 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  refresh-installer:
+    update: yes
+
+  snaps:
+    - name: maas
+      channel: "3.1/stable"
+    - name: maas-test-db
+      channel:  "3.1/stable"
+    - name: maas-cli
+      channel: "latest/stable"
+
+  storage:
+    layout:
+      name: lvm
+
+  early-commands:
+    - systemctl stop ssh # otherwise packer tries to connect and exceed max attempts
+
+  keyboard:
+    layout: en
+
+  identity:
+    hostname: localhost
+    username: vagrant
+    password: "$6$bhZARn1NjBXaQ.M.$JqHfRKB96fwRQQWNGH.tBxyECYY9rrbBeS8br84ccn4OSnC.7pyhvHunpobZ8fV8NCOIXasRGyZT4MCJWQYtM1"
+
+  ssh:
+    install-server: yes
+    allow-pw: no
+    #authorized-keys:
+
+  late-commands:
+    - maas init region+rack --database-uri maas-test-db:///

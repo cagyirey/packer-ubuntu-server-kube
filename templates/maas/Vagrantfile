@@ -1,0 +1,27 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.require_version ">= 1.8"
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "holostream-maas"
+  config.vm.hostname = "holostream-maas"
+  config.vm.guest = :debian
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.communicator = :ssh
+  config.ssh.username = "vagrant"
+  config.ssh.password = "ubuntu"
+
+  config.vm.provider :libvirt do |libvirt|
+    libvirt.driver = "kvm"
+      libvirt.memory = 4096
+      libvirt.cpus = 12
+      libvirt.random model: 'random'
+      libvirt.autostart = true
+      libvirt.features = %w[acpi apic]
+      libvirt.channel type: 'unix', target_name: 'org.qemu.guest_agent.0', target_type: 'virtio'
+      libvirt.disk_driver cache: 'writeback', discard: 'unmap', detect_zeroes: 'unmap'
+      libvirt.clock_timer name: 'hpet', present: 'yes'
+    end
+end
